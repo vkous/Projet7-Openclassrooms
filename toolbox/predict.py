@@ -223,23 +223,23 @@ def interpretation(ID, dataframe, model, sample=False):
 
 def df_explain(dataframe):
 
-    chaine = '<h2>Principales caractéristiques discriminantes</h2>'
+    chaine = '##Principales caractéristiques discriminantes##  \n'
     for feature in dataframe['feature']:
-        chaine += '<h3>Caractéristique : '+ str(feature) + '</h3><ul>'
-        chaine += '<li><b>Prospect : </b>'+str(dataframe[dataframe['feature']==feature]['customer_values'].values[0])
+        chaine += '### Caractéristique : '+ str(feature) + '###  \n'
+        chaine += '* **Prospect : **'+str(dataframe[dataframe['feature']==feature]['customer_values'].values[0])
         
         chaine_discrim = ' ' + str(dataframe[dataframe['feature']==feature]['signe'].values[0])
-        chaine_discrim += ' ' + str(dataframe[dataframe['feature']==feature]['val_lim'].values[0]) + '(seuil de pénalisation)'
+        chaine_discrim += ' ' + str(dataframe[dataframe['feature']==feature]['val_lim'].values[0]) + ' (seuil de pénalisation)'
 
         if dataframe[dataframe['feature']==feature]['contribution'].values[0] == 'default' :
-            chaine += '<span style=\'color:red\'>' + chaine_discrim + '</span>' 
+            chaine += '<span style=\'color:red\'>' + chaine_discrim + '</span>  \n' 
         else : 
-            chaine += '<span style=\'color:green\'>' + chaine_discrim + '</span>' 
+            chaine += '<span style=\'color:green\'>' + chaine_discrim + '</span>  \n' 
 
-        chaine += '</li><li><b>Moyenne : </b>'+str(dataframe[dataframe['feature']==feature]['moy_global'].values[0])+'</li>'
-        chaine += '<li><b>Clients réguliers : </b>'+str(dataframe[dataframe['feature']==feature]['moy_en_regle'].values[0])+'</li>'
-        chaine += '<li><b>Clients avec défaut: </b>'+str(dataframe[dataframe['feature']==feature]['moy_defaut'].values[0])+'</li>'
-        chaine += '</ul>'
+        chaine += '* **Moyenne :**'+str(dataframe[dataframe['feature']==feature]['moy_global'].values[0])+ '  \n'
+        chaine += '* **Clients réguliers :** '+str(dataframe[dataframe['feature']==feature]['moy_en_regle'].values[0])+ '  \n'
+        chaine += '* ** Clients avec défaut: **'+str(dataframe[dataframe['feature']==feature]['moy_defaut'].values[0])+ '  \n'
+        chaine += ''
     return chaine
 
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
