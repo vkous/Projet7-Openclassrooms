@@ -19,6 +19,14 @@ def chargement_data(path):
     dataframe = pd.read_csv(path)
     return dataframe
 
+@st.cache
+def chargement_explanation(id_input, dataframe, model, sample):
+    return interpretation(str(id_input), 
+        dataframe, 
+        model, 
+        sample=sample)
+
+
 dataframe = chargement_data(path_df_reduced)
 liste_id = dataframe['SK_ID_CURR'].tolist()
 
@@ -39,37 +47,45 @@ if id_input == '': #lorsque rien n'a été saisi
     st.write(chaine_en_regle)
 
 elif (int(id_input) in liste_id): #quand un identifiant correct a été saisi on appelle l'API
+
     #Appel de l'API : 
-    data_load_state = st.text('Chargement de la prédiction...')
+
     API_url = "http://127.0.0.1:5000/credit/" + id_input
-    json_url = urlopen(API_url)
 
-    API_data = json.loads(json_url.read())
-    classe_predite = API_data['prediction']
-    if classe_predite == 1:
-        etat = 'client en défaut'
-        proba = 1-API_data['proba'] 
-    else:
-        etat = 'client régulier'
-        proba = API_data['proba']
+    with st.spinner('Chargement du score du client...'):
+        json_url = urlopen(API_url)
 
-    #affichage de la prédiction
-    prediction = API_data['proba']
-    classe_reelle = dataframe[dataframe['SK_ID_CURR']==int(id_input)]['LABELS'].values[0]
-    classe_reelle = str(classe_reelle).replace('0', 'en règle').replace('1', 'en défaut')
-    chaine = 'Prédiction : ' + etat +  ' avec ' + str(round(proba*100)) + '% de probabilité (classe réelle : '+str(classe_reelle) + ')'
+        API_data = json.loads(json_url.read())
+        classe_predite = API_data['prediction']
+        if classe_predite == 1:
+            etat = 'client en défaut'
+            proba = 1-API_data['proba'] 
+        else:
+            etat = 'client régulier'
+            proba = API_data['proba']
+
+        #affichage de la prédiction
+        prediction = API_data['proba']
+        classe_reelle = dataframe[dataframe['SK_ID_CURR']==int(id_input)]['LABELS'].values[0]
+        classe_reelle = str(classe_reelle).replace('0', 'en règle').replace('1', 'en défaut')
+        chaine = 'Prédiction : ' + etat +  ' avec ' + str(round(proba*100)) + '% de probabilité (classe réelle : '+str(classe_reelle) + ')'
+
     st.write(chaine)
     st.write(' ')#espace
 
     #affichage de l'explication du score
-    explanation = interpretation(str(id_input), 
+    with st.spinner('Chargement des détails de la prédiction...'):
+        explanation = chargement_explanation(str(id_input), 
         dataframe, 
         StackedClassifier(), 
         sample=False)
-
-    st.write(explanation)
+        st.write(explanation)
+    #st.success('Done!')
+        
+    graphes_streamlit(explanation)
 
     st.write(df_explain(explanation), unsafe_allow_html=True)
+
 
     st.write(dataframe[dataframe['SK_ID_CURR']==int(id_input)])
 

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import streamlit as st
 import pickle
 import lime
 import time
@@ -25,7 +26,7 @@ dataframe = pd.read_csv(path_df)
 df_columns = dataframe.drop(['Unnamed: 0', 'SK_ID_CURR', 'LABELS'], axis=1).columns.tolist()
 
 path_explainer = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/models/explainer.obj'
-    
+path_kdtree = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/models/kdtree.obj'
 
 def load_modele(path):
     '''Renvoie le modele en tant qu\'objet à partir du chemin'''
@@ -61,7 +62,10 @@ def predict(ID, dataframe):
 
     return prediction, proba
 
-def predict_2(ID, dataframe):
+def predict_flask(ID, dataframe):
+    '''Fonction de prédiction utilisée par l\'API flask :
+    a partir de l'identifiant et du jeu de données
+    renvoie la prédiction à partir du modèle'''
 
     ID = int(ID)
     X = dataframe[dataframe['SK_ID_CURR'] == ID]
@@ -129,6 +133,7 @@ def clean_map(string):
 def interpretation(ID, dataframe, model, sample=False):
     '''Fonction qui fait appel à Lime à partir du modèle de prédiction et du jeu de données'''
     #préparation des données
+    print('\n\n\n\n======== Nouvelle Instance d\'explicabilité ========')
     start_time = time.time()
     ID = int(ID)
     class_names = ['OK', 'default']
@@ -141,8 +146,7 @@ def interpretation(ID, dataframe, model, sample=False):
     X = dataframe[dataframe['SK_ID_CURR'] == ID]
     
     print('ID client: {}'.format(ID))
-    print('Classe réelle : {}'.format(class_names[X['LABELS'].values[0]]))
-    print('FIN DEBUG\n')
+    #print('Classe réelle : {}'.format(class_names[X['LABELS'].values[0]]))
     
     print('Temps initialisation : ', time.time() - start_time)
     start_time = time.time()
@@ -205,19 +209,20 @@ def interpretation(ID, dataframe, model, sample=False):
     #global
     df_map['contribution'] = 'normal'
     df_map.loc[df_map['ecart']>=0, 'contribution'] = 'default'
-    df_map['customer_values'] = [X[feature].mean() for feature in df_map['feature'].values.tolist()]
     
+    df_map['customer_values'] = [X[feature].mean() for feature in df_map['feature'].values.tolist()]
     df_map['moy_global'] = [dataframe_complet[feature].mean() for feature in df_map['feature'].values.tolist()]
     #clients en règle
     df_map['moy_en_regle'] = [dataframe_complet[dataframe_complet['LABELS'] == 0][feature].mean() for feature in df_map['feature'].values.tolist()]
     #clients en règle
     df_map['moy_defaut'] = [dataframe_complet[dataframe_complet['LABELS'] == 1][feature].mean() for feature in df_map['feature'].values.tolist()]
-    #50 plus proches voisins
-    #df_map['moyenne_voisins']
+    #20 plus proches voisins
+    index_plus_proches_voisins = nearest_neighbors(X, dataframe_complet, 20)
+    df_map['moy_voisins'] = [dataframe_complet[dataframe_complet['Unnamed: 0'].isin(index_plus_proches_voisins)][feature].mean() for feature in df_map['feature'].values.tolist()]
 
     print('Temps calcul données comparatives : ', time.time() - start_time)
     start_time = time.time()
-    #return exp
+
     return df_map.sort_values(by='contribution')
 
 
@@ -236,11 +241,61 @@ def df_explain(dataframe):
         else : 
             chaine += '<span style=\'color:green\'>' + chaine_discrim + '</span>  \n' 
 
-        chaine += '* **Moyenne :**'+str(dataframe[dataframe['feature']==feature]['moy_global'].values[0])+ '  \n'
+        chaine += '* **Clients Comparables:**'+str(dataframe[dataframe['feature']==feature]['moy_voisins'].values[0])+ '  \n'
+        chaine += '* **Moyenne Globale:**'+str(dataframe[dataframe['feature']==feature]['moy_global'].values[0])+ '  \n'
         chaine += '* **Clients réguliers :** '+str(dataframe[dataframe['feature']==feature]['moy_en_regle'].values[0])+ '  \n'
         chaine += '* ** Clients avec défaut: **'+str(dataframe[dataframe['feature']==feature]['moy_defaut'].values[0])+ '  \n'
         chaine += ''
     return chaine
+
+def nearest_neighbors(X, dataframe, n_neighbors):
+    '''Determine les plus proches voisins de l\'individu X 
+    considere a partir d\'un KDTree sur 5 colonnes représentatives de caractéristiques intelligibles
+    Renvoie en sortie les indices des k plus proches voisins'''
+    cols = ['DAYS_BIRTH', 'AMT_INCOME_TOTAL', 'CODE_GENDER_F', 'CREDIT_TERM', 'CREDIT_INCOME_PERCENT']
+    tree = pickle.load(open(path_kdtree, 'rb'))
+    dist, ind = tree.query(np.array(X[cols]).reshape(1,-1), k = n_neighbors)
+    return ind[0]
+
+def graphes_streamlit(df):
+    f, ax = plt.subplots(2, 3, figsize=(10,10), sharex=False)
+    plt.subplots_adjust(hspace = 0.5, wspace = 0.5)
+    plt.title('Comparaison des principales caractéristiques du client')
+    i = 0
+    j = 0
+    liste_cols = ['Client', 'Moyenne', 'En Règle', 'En défaut','Similaires']
+    for feature in df['feature']:
+        if len(feature) >= 18:
+            chaine = feature[:18]+'\n'+feature[18:]
+        else : 
+            chaine = feature
+            
+        sns.despine(ax=None, left=True, bottom=True, trim=False)
+        sns.barplot(y = df[df['feature']==feature][['customer_values', 'moy_global', 'moy_en_regle', 'moy_defaut', 'moy_voisins']].values[0],
+                   x = liste_cols,
+                   ax = ax[i, j])
+        sns.axes_style("white")
+        ax[i,j].set_title(chaine)
+        if i == 0:
+            ax[i,j].set_facecolor('#ffe3e3')
+        else:
+            ax[i,j].set_facecolor('#e3ffec')
+            
+        if j == 2:
+            i+=1
+            j=0
+        else:
+            j+=1
+        if i == 2:
+            break;
+    for ax in f.axes:
+        plt.sca(ax)
+        plt.xticks(rotation=45)
+
+    st.pyplot()
+
+    return True
+
 
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
 class StackedClassifier(BaseEstimator, ClassifierMixin):

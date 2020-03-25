@@ -10,6 +10,9 @@ from toolbox.predict import *
 import pandas as pd
 import xgboost
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
 
 # App config.
 DEBUG = True
@@ -56,7 +59,7 @@ def credit(id_client):
     #print('shape df ', dataframe.shape)
     
     #calcul prédiction défaut et probabilité de défaut
-    prediction, proba = predict_2(id_client, dataframe)
+    prediction, proba = predict_flask(id_client, dataframe)
 
     dict_final = {
         'prediction' : int(prediction),
