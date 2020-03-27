@@ -87,7 +87,7 @@ elif (int(id_input) in liste_id): #quand un identifiant correct a été saisi on
     #Affichage des graphes    
     graphes_streamlit(explanation)
 
-    st.write("**Définition des groupes**\n\
+    st.subheader("**Définition des groupes**\n\
     \n\
     * Client : la valeur pour le client considéré\n\
     * Moyenne : valeur moyenne pour l'ensemble des clients\n\
@@ -102,7 +102,15 @@ elif (int(id_input) in liste_id): #quand un identifiant correct a été saisi on
 
     #Détail des explications
     st.subheader('Détail des explication')
-    #st.write(df_explain(explanation), unsafe_allow_html=True)
+    chaine_explanation, df_explanation = df_explain(explanation)
+    chaine_features = '\n\
+    '
+    for x, y in zip(df_explanation['Feature'], df_explanation['Nom francais']):
+        chaine_features += '* **' + str(x) + ' :** '+str(y) +'\n'\
+        ''
+    st.markdown(chaine_features)
+
+    #st.write(df_explanation, unsafe_allow_html=True)
 
     #Modifier le profil client en modifiant une valeur
     #st.subheader('Modifier le profil client')

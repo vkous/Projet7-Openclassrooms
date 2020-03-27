@@ -25,7 +25,7 @@ path_df = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/data/custom/t
 dataframe = pd.read_csv(path_df)
 df_columns = dataframe.drop(['Unnamed: 0', 'SK_ID_CURR', 'LABELS'], axis=1).columns.tolist()
 
-path_correspondance_features = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/data/custom/features_correspondance.csv'
+path_correspondance_features = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/data/custom/features_correspondance.csv'   
 path_explainer = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/models/explainer.obj'
 path_kdtree = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/models/kdtree.obj'
 
@@ -250,11 +250,14 @@ def interpretation(ID, dataframe, model, sample=False):
 
 def df_explain(dataframe):
     '''Ecrit une '''
+
     chaine = '##Principales caractéristiques discriminantes##  \n'
+    df_correspondance = pd.DataFrame(columns=['Feature','Nom francais'])
     for feature in dataframe['feature']:
+
         chaine += '### Caractéristique : '+ str(feature) + '('+ correspondance_feature(feature) +')###  \n'
         chaine += '* **Prospect : **'+ str(dataframe[dataframe['feature']==feature]['customer_values'].values[0])
-        chaine_discrim += ' (seuil de pénalisation : ' + str(dataframe[dataframe['feature']==feature]['signe'].values[0])
+        chaine_discrim = ' (seuil de pénalisation : ' + str(dataframe[dataframe['feature']==feature]['signe'].values[0])
         chaine_discrim +=  str(dataframe[dataframe['feature']==feature]['val_lim'].values[0])
 
         if dataframe[dataframe['feature']==feature]['contribution'].values[0] == 'default' :
@@ -262,12 +265,16 @@ def df_explain(dataframe):
         else : 
             chaine += '<span style=\'color:green\'>' + chaine_discrim + '</span>  \n' 
 
-        chaine += '* **Clients Comparables:**'+str(dataframe[dataframe['feature']==feature]['moy_voisins'].values[0])+ '  \n'
-        chaine += '* **Moyenne Globale:**'+str(dataframe[dataframe['feature']==feature]['moy_global'].values[0])+ '  \n'
-        chaine += '* **Clients réguliers :** '+str(dataframe[dataframe['feature']==feature]['moy_en_regle'].values[0])+ '  \n'
-        chaine += '* ** Clients avec défaut: **'+str(dataframe[dataframe['feature']==feature]['moy_defaut'].values[0])+ '  \n'
-        chaine += ''
-    return chaine
+        #chaine += '* **Clients Comparables:**'+str(dataframe[dataframe['feature']==feature]['moy_voisins'].values[0])+ '  \n'
+        #chaine += '* **Moyenne Globale:**'+str(dataframe[dataframe['feature']==feature]['moy_global'].values[0])+ '  \n'
+        #chaine += '* **Clients réguliers :** '+str(dataframe[dataframe['feature']==feature]['moy_en_regle'].values[0])+ '  \n'
+        #chaine += '* ** Clients avec défaut: **'+str(dataframe[dataframe['feature']==feature]['moy_defaut'].values[0])+ '  \n'
+        #chaine += ''
+        df_correspondance_line = pd.DataFrame(data = np.array([[feature, correspondance_feature(feature)]]), columns = ['Feature', 'Nom francais'])
+        #df_correspondance_line = pd.DataFrame(data = {'Feature' : feature, 'Nom francais' : correspondance_feature(feature)})
+        df_correspondance = pd.concat([df_correspondance, df_correspondance_line], ignore_index=True)
+    return chaine, df_correspondance
+
 
 def nearest_neighbors(X, dataframe, n_neighbors):
     '''Determine les plus proches voisins de l\'individu X 
@@ -281,9 +288,11 @@ def nearest_neighbors(X, dataframe, n_neighbors):
 def correspondance_feature(feature_name):
     '''A partir du nom d\'une feature, trouve sa correspondance en français'''
     df_correspondance = pd.read_csv(path_correspondance_features)
+    df_correspondance['Nom origine'] = df_correspondance['Nom origine'].str[1:]
     try:
         return df_correspondance[df_correspondance['Nom origine'] == feature_name]['Nom français'].values[0]
     except:
+        print('correspondance non trouvée')
         return feature_name
 
 def graphes_streamlit(df):
