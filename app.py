@@ -1,4 +1,6 @@
 #APP FLASK (commande : flask run)
+# Partie formulaire non utilisée (uniquement appel à l'API)
+
 from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
 from flask_wtf import Form, validators  
 from wtforms.fields import StringField
@@ -20,7 +22,7 @@ app = Flask(__name__)
 app.config.from_object(__name__)
 app.config['SECRET_KEY'] = '7d441f27d441f27567d441f2b6176a'
 
-
+#formulaire d'appel à l'API (facultatif)
 class SimpleForm(Form):
     form_id = TextField('id:', validators=[validators.required()])
     
@@ -32,7 +34,7 @@ class SimpleForm(Form):
         if request.method == 'POST':
             form_id=request.form['id']
             print(form_id)
-            return(redirect('credit/'+form_id)) # à corriger avec renvoi vers dashboard
+            return(redirect('credit/'+form_id)) 
     
         if form.validate():
             # Save the comment here.
@@ -66,12 +68,11 @@ def credit(id_client):
         'proba' : float(proba[0][0])
         }
 
-    print(dict_final)
+    print('Nouvelle Prédiction : \n', dict_final)
 
     return jsonify(dict_final)
 
 
-
-
+#lancement de l'application
 if __name__ == "__main__":
     app.run(debug=True)

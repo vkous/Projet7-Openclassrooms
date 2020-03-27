@@ -25,6 +25,7 @@ path_df = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/data/custom/t
 dataframe = pd.read_csv(path_df)
 df_columns = dataframe.drop(['Unnamed: 0', 'SK_ID_CURR', 'LABELS'], axis=1).columns.tolist()
 
+path_correspondance_features = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/data/custom/features_correspondance.csv'
 path_explainer = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/models/explainer.obj'
 path_kdtree = 'D:/Google Drive/Projet 7 - Score Credit/Notebook & Data/models/kdtree.obj'
 
@@ -47,8 +48,7 @@ def predict(ID, dataframe):
     X = dataframe[dataframe['SK_ID_CURR'] == ID]
 
     X = X.drop(['Unnamed: 0', 'SK_ID_CURR', 'LABELS'], axis=1)
-
-
+    print('prediction shape X :  ', X.shape)
     model_1 = load_modele(PATH_MODEL_1) #Modele Random Forest Classifier
     model_2 = load_modele(PATH_MODEL_2) #Modele XGBoost
     model_stacking = load_modele(PATH_MODEL_STACKING) 
@@ -56,11 +56,31 @@ def predict(ID, dataframe):
     X_stacked = pd.DataFrame([model_1.predict_proba(X)[:,0],
                                 model_2.predict_proba(X)[:,0]]).T 
     X_stacked = pd.DataFrame(np.hstack([X_stacked, X]))
+    print('prediction shape X_stacked :  ', X_stacked.shape)
 
     prediction = model_stacking.predict(np.array(X_stacked))
     proba = model_stacking.predict_proba(np.array(X_stacked))
 
     return prediction, proba
+
+
+def predict_update(ID, dataframe, feature, value):
+    '''Renvoie la prédiction à partir d\'un vecteur X'''
+    ID = int(ID)
+    X = dataframe[dataframe['SK_ID_CURR'] == ID]
+    X[feature] = value
+    X = X.drop(['Unnamed: 0', 'SK_ID_CURR', 'LABELS'], axis=1)
+    if 'Unnamed: 0.1' in X.columns:
+        X = X.drop('Unnamed: 0.1', axis=1)
+    proba = predict_function_xgb_stacking(X)
+    print(proba)
+    print(proba[0])
+    print(proba[0][0])
+    if proba[0][0] > 0.5:
+        return 0, proba
+    else:
+        return 1, proba
+
 
 def predict_flask(ID, dataframe):
     '''Fonction de prédiction utilisée par l\'API flask :
@@ -222,19 +242,20 @@ def interpretation(ID, dataframe, model, sample=False):
 
     print('Temps calcul données comparatives : ', time.time() - start_time)
     start_time = time.time()
+    df_map = pd.concat([df_map[df_map['contribution'] == 'default'].head(3),
+        df_map[df_map['contribution'] == 'normal'].head(3)], axis=0)
 
     return df_map.sort_values(by='contribution')
 
 
 def df_explain(dataframe):
-
+    '''Ecrit une '''
     chaine = '##Principales caractéristiques discriminantes##  \n'
     for feature in dataframe['feature']:
-        chaine += '### Caractéristique : '+ str(feature) + '###  \n'
-        chaine += '* **Prospect : **'+str(dataframe[dataframe['feature']==feature]['customer_values'].values[0])
-        
-        chaine_discrim = ' ' + str(dataframe[dataframe['feature']==feature]['signe'].values[0])
-        chaine_discrim += ' ' + str(dataframe[dataframe['feature']==feature]['val_lim'].values[0]) + ' (seuil de pénalisation)'
+        chaine += '### Caractéristique : '+ str(feature) + '('+ correspondance_feature(feature) +')###  \n'
+        chaine += '* **Prospect : **'+ str(dataframe[dataframe['feature']==feature]['customer_values'].values[0])
+        chaine_discrim += ' (seuil de pénalisation : ' + str(dataframe[dataframe['feature']==feature]['signe'].values[0])
+        chaine_discrim +=  str(dataframe[dataframe['feature']==feature]['val_lim'].values[0])
 
         if dataframe[dataframe['feature']==feature]['contribution'].values[0] == 'default' :
             chaine += '<span style=\'color:red\'>' + chaine_discrim + '</span>  \n' 
@@ -257,30 +278,44 @@ def nearest_neighbors(X, dataframe, n_neighbors):
     dist, ind = tree.query(np.array(X[cols]).reshape(1,-1), k = n_neighbors)
     return ind[0]
 
+def correspondance_feature(feature_name):
+    '''A partir du nom d\'une feature, trouve sa correspondance en français'''
+    df_correspondance = pd.read_csv(path_correspondance_features)
+    try:
+        return df_correspondance[df_correspondance['Nom origine'] == feature_name]['Nom français'].values[0]
+    except:
+        return feature_name
+
 def graphes_streamlit(df):
+    '''A partir du dataframe, affichage un subplot de 6 graphes représentatif du client comparé à d'autres clients sur 6 features'''
     f, ax = plt.subplots(2, 3, figsize=(10,10), sharex=False)
     plt.subplots_adjust(hspace = 0.5, wspace = 0.5)
-    plt.title('Comparaison des principales caractéristiques du client')
+    
     i = 0
     j = 0
     liste_cols = ['Client', 'Moyenne', 'En Règle', 'En défaut','Similaires']
     for feature in df['feature']:
-        if len(feature) >= 18:
-            chaine = feature[:18]+'\n'+feature[18:]
-        else : 
-            chaine = feature
-            
+
         sns.despine(ax=None, left=True, bottom=True, trim=False)
         sns.barplot(y = df[df['feature']==feature][['customer_values', 'moy_global', 'moy_en_regle', 'moy_defaut', 'moy_voisins']].values[0],
                    x = liste_cols,
                    ax = ax[i, j])
         sns.axes_style("white")
-        ax[i,j].set_title(chaine)
-        if i == 0:
-            ax[i,j].set_facecolor('#ffe3e3')
+
+        if len(feature) >= 18:
+            chaine = feature[:18]+'\n'+feature[18:]
+        else : 
+            chaine = feature
+        if df[df['feature']==feature]['contribution'].values[0] == 'default':
+            chaine += '\n(pénalise le score)'
+            ax[i,j].set_facecolor('#ffe3e3') #contribue négativement
+            ax[i,j].set_title(chaine, color='#990024')
         else:
+            chaine += '\n(améliore le score)'
             ax[i,j].set_facecolor('#e3ffec')
+            ax[i,j].set_title(chaine, color='#017320')
             
+       
         if j == 2:
             i+=1
             j=0
@@ -291,7 +326,9 @@ def graphes_streamlit(df):
     for ax in f.axes:
         plt.sca(ax)
         plt.xticks(rotation=45)
-
+    if i!=2: #cas où on a pas assez de features à expliquer (ex : 445260)
+        #
+        True
     st.pyplot()
 
     return True
