@@ -87,7 +87,8 @@ elif (int(id_input) in liste_id): #quand un identifiant correct a été saisi on
     #Affichage des graphes    
     graphes_streamlit(explanation)
 
-    st.subheader("**Définition des groupes**\n\
+    st.subheader("Définition des groupes")
+    st.markdown("\
     \n\
     * Client : la valeur pour le client considéré\n\
     * Moyenne : valeur moyenne pour l'ensemble des clients\n\
@@ -101,12 +102,12 @@ elif (int(id_input) in liste_id): #quand un identifiant correct a été saisi on
     #st.write(explanation)
 
     #Détail des explications
-    st.subheader('Détail des explication')
+    st.subheader('Traduction des explication')
     chaine_explanation, df_explanation = df_explain(explanation)
     chaine_features = '\n\
     '
     for x, y in zip(df_explanation['Feature'], df_explanation['Nom francais']):
-        chaine_features += '* **' + str(x) + ' :** '+str(y) +'\n'\
+        chaine_features += '* **' + str(x) + ' ** '+str(y) +'\n'\
         ''
     st.markdown(chaine_features)
 
@@ -156,6 +157,10 @@ elif (int(id_input) in liste_id): #quand un identifiant correct a été saisi on
             chaine = 'Nouvelle prédiction : **' + etat +  '** avec **' + str(round((proba_update[0][1])*100)) + '%** de risque de défaut (classe réelle : '+str(classe_reelle) + ')'
             st.sidebar.markdown(chaine)
 
+    st.subheader('Informations relatives au client')
+    df_client = chargement_ligne_data(id_input, dataframe).T
+    df_client['nom_fr'] = [correspondance_feature(feature) for feature in df_client.index]
+    st.write(df_client)
         
 
 else: 

@@ -249,7 +249,7 @@ def interpretation(ID, dataframe, model, sample=False):
 
 
 def df_explain(dataframe):
-    '''Ecrit une '''
+    '''Ecrit une chaine de caractéres permettant d\'expliquer l\'influence des features dans le résultat de l\'algorithme '''
 
     chaine = '##Principales caractéristiques discriminantes##  \n'
     df_correspondance = pd.DataFrame(columns=['Feature','Nom francais'])
