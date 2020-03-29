@@ -20,5 +20,5 @@ Source des données : https://www.kaggle.com/c/home-credit-default-risk/data
 * Déployer un modèle via une API dans le Web
 * Utiliser un logiciel de version de code pour assurer l’intégration du modèle
 
-## Visionner le dashboard 
-[![Video dashboard](https://i.ytimg.com/vi/X8Awv1xasEw/maxresdefault.jpg)](https://www.youtube.com/watch?v=X8Awv1xasEw&feature=youtu.be)
+## Vidéo du dashboard 
+[![Video dashboard](https://i.ytimg.com/vi/X8Awv1xasEw/maxresdefault.jpg width=200)](https://www.youtube.com/watch?v=X8Awv1xasEw&feature=youtu.be)
